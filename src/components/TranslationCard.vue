@@ -160,7 +160,7 @@ export default {
         console.error('Translation error:', error);
         this.$message.error('翻译失败，请稍后重试');
       }
-    }
+    },
     async speakText(text) {
       try {
         const ttsResponse = await fetch('https://mistpe-edge.hf.space/v1/audio/speech', {
