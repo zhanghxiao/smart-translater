@@ -69,15 +69,12 @@ export default {
       return modelsEnv.split(',').map(model => model.trim());
     },
     openChat() {
-      this.currentSession = [];
+      this.currentSession = [
+        { role: 'system', content: 'You are a helpful assistant. The following messages are translation results. Please analyze and discuss them.' }
+      ];
       if (this.initialMessage) {
-        const systemMessage = { 
-          id: Date.now(), 
-          role: 'system', 
-          content: `你是一个翻译助手。用户刚刚翻译了以下内容："${this.initialMessage}"。请根据这个翻译结果进行对话，提供相关的解释、分析或建议。` 
-        };
-        this.messages = [systemMessage];
-        this.currentSession.push({ role: 'system', content: systemMessage.content });
+        this.messages = [{ id: Date.now(), role: 'assistant', content: this.initialMessage }];
+        this.currentSession.push({ role: 'assistant', content: this.initialMessage });
       } else {
         this.messages = [];
       }
@@ -92,23 +89,23 @@ export default {
       });
     },
     closeChat() {
-      if (this.currentSession.length > 0) {
+      if (this.currentSession.length > 1) {
         this.saveChatHistory();
       }
       this.currentSession = [];
     },
     async sendMessage() {
       if (!this.userInput.trim()) return;
-
+    
       const userMessage = { id: Date.now(), role: 'user', content: this.userInput };
       this.messages.push(userMessage);
       this.currentSession.push({ role: 'user', content: this.userInput });
-      const userMessageContent = this.userInput;
+      // const userMessageContent = this.userInput;
       this.userInput = '';
-
+    
       const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: '' };
       this.messages.push(assistantMessage);
-
+    
       try {
         const response = await fetch(
           `${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`,
@@ -119,10 +116,7 @@ export default {
               'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
             },
             body: JSON.stringify({
-              messages: [
-                ...this.currentSession.slice(-6),
-                { role: 'user', content: userMessageContent }
-              ],
+              messages: this.currentSession.slice(-12), // 保留最新的6次对话记录（12条消息）
               stream: true,
               model: this.selectedModel,
               temperature: 0.5,
@@ -130,11 +124,11 @@ export default {
             })
           }
         );
-
+    
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let result = '';
-
+    
         // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
@@ -144,6 +138,13 @@ export default {
           for (const line of lines) {
             if (line === 'data: [DONE]') {
               this.currentSession.push({ role: 'assistant', content: result });
+              // 保留最新的6次对话记录
+              if (this.currentSession.length > 13) { // 13 = 1 (system) + 12 (6 user + 6 assistant)
+                this.currentSession = [
+                  this.currentSession[0],
+                  ...this.currentSession.slice(-12)
+                ];
+              }
               return;
             }
             if (line.startsWith('data: ')) {
@@ -166,7 +167,10 @@ export default {
     scrollToBottom() {
       this.$nextTick(() => {
         const chatBody = this.$refs.chatBody;
-        chatBody.scrollTop = chatBody.scrollHeight;
+        chatBody.scrollTo({
+          top: chatBody.scrollHeight,
+          behavior: 'smooth'
+        });
       });
     },
     saveChatHistory() {
@@ -179,7 +183,7 @@ export default {
     },
     restoreChat(messages) {
       this.currentSession = messages;
-      this.messages = messages.map((msg, index) => ({
+      this.messages = messages.filter(msg => msg.role !== 'system').map((msg, index) => ({
         id: Date.now() + index,
         role: msg.role,
         content: msg.content
@@ -209,20 +213,18 @@ export default {
 .chat-window {
   display: flex;
   flex-direction: column;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 .el-dialog__body {
-  flex: 1;
-  overflow: hidden;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
+  padding: 0 !important;
 }
 
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 60vh;
 }
 
 .chat-header {
@@ -234,13 +236,13 @@ export default {
 .chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 10px;
   background-color: #f9f9f9;
 }
 
 .message {
   display: flex;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   align-items: flex-start;
 }
 
@@ -249,10 +251,10 @@ export default {
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  margin: 0 10px;
+  margin: 0 5px;
 }
 
 .avatar.user {
@@ -264,20 +266,30 @@ export default {
 }
 
 .content {
-  padding: 10px 15px;
-  border-radius: 10px;
+  padding: 4px 12px; /* 减小上下内边距 */
+  border-radius: 8px;
   max-width: 70%;
   word-wrap: break-word;
+}
+
+.content :first-child {
+  margin-top: 2px; /* 减小第一个子元素的上边距 */
+}
+
+.content :last-child {
+  margin-bottom: 2px; /* 减小最后一个子元素的下边距 */
 }
 
 .user .content {
   background-color: #409EFF;
   color: white;
+  margin-left: auto;
 }
 
 .assistant .content {
-  background-color: #F2F6FC;
-  color: #333;
+  background-color: #67C23A;
+  color: white;
+  margin-right: auto;
 }
 
 .input-container {
@@ -285,15 +297,5 @@ export default {
   background-color: #fff;
   border-top: 1px solid #e4e7ed;
 }
-
-@media (max-width: 600px) {
-  .chat-window {
-    width: 95% !important;
-  }
-  
-  .chat-button {
-    width: 50px;
-    height: 50px;
-  }
-}
 </style>
+    
