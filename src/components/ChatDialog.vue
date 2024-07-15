@@ -1,0 +1,299 @@
+<template>
+  <div class="chat-dialog">
+    <el-button class="chat-button" icon="el-icon-chat-dot-round" circle @click="openChat"></el-button>
+    <el-dialog
+      title="与AI助手对话"
+      :visible.sync="showChat"
+      :append-to-body="true"
+      :close-on-click-modal="false"
+      :modal="true"
+      width="80%"
+      class="chat-window"
+      @close="closeChat"
+    >
+      <div class="chat-container">
+        <div class="chat-header">
+          <el-select v-model="selectedModel" placeholder="选择模型">
+            <el-option v-for="model in models" :key="model" :value="model">{{ model }}</el-option>
+          </el-select>
+        </div>
+        <div class="chat-body" ref="chatBody">
+          <div v-for="message in messages" :key="message.id" :class="['message', message.role]">
+            <div class="avatar" :class="message.role"></div>
+            <div class="content">
+              <MarkdownRenderer :content="message.content" />
+            </div>
+          </div>
+        </div>
+        <div class="input-container">
+          <el-input
+            v-model="userInput"
+            placeholder="输入消息..."
+            @keyup.enter.native="sendMessage"
+          >
+            <el-button slot="append" icon="el-icon-s-promotion" @click="sendMessage">发送</el-button>
+          </el-input>
+        </div>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
+
+export default {
+  name: 'ChatDialog',
+  components: {
+    MarkdownRenderer
+  },
+  props: {
+    initialMessage: {
+      type: String,
+      default: ''
+    }
+  },
+  data() {
+    return {
+      showChat: false,
+      userInput: '',
+      messages: [],
+      models: this.getModelsFromEnv(),
+      selectedModel: 'gpt-3.5-turbo-0125',
+      currentSession: []
+    };
+  },
+  methods: {
+    getModelsFromEnv() {
+      const modelsEnv = process.env.VUE_APP_MODELS || '';
+      return modelsEnv.split(',').map(model => model.trim());
+    },
+    openChat() {
+      this.currentSession = [];
+      if (this.initialMessage) {
+        const systemMessage = { 
+          id: Date.now(), 
+          role: 'system', 
+          content: `你是一个翻译助手。用户刚刚翻译了以下内容："${this.initialMessage}"。请根据这个翻译结果进行对话，提供相关的解释、分析或建议。` 
+        };
+        this.messages = [systemMessage];
+        this.currentSession.push({ role: 'system', content: systemMessage.content });
+      } else {
+        this.messages = [];
+      }
+      
+      this.$nextTick(() => {
+        this.showChat = true;
+        setTimeout(() => {
+          if (this.$refs.chatBody) {
+            this.$refs.chatBody.scrollTop = this.$refs.chatBody.scrollHeight;
+          }
+        }, 100);
+      });
+    },
+    closeChat() {
+      if (this.currentSession.length > 0) {
+        this.saveChatHistory();
+      }
+      this.currentSession = [];
+    },
+    async sendMessage() {
+      if (!this.userInput.trim()) return;
+
+      const userMessage = { id: Date.now(), role: 'user', content: this.userInput };
+      this.messages.push(userMessage);
+      this.currentSession.push({ role: 'user', content: this.userInput });
+      const userMessageContent = this.userInput;
+      this.userInput = '';
+
+      const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: '' };
+      this.messages.push(assistantMessage);
+
+      try {
+        const response = await fetch(
+          `${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
+            },
+            body: JSON.stringify({
+              messages: [
+                ...this.currentSession.slice(-6),
+                { role: 'user', content: userMessageContent }
+              ],
+              stream: true,
+              model: this.selectedModel,
+              temperature: 0.5,
+              presence_penalty: 2
+            })
+          }
+        );
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let result = '';
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            if (line === 'data: [DONE]') {
+              this.currentSession.push({ role: 'assistant', content: result });
+              return;
+            }
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              if (data.choices[0].delta && data.choices[0].delta.content) {
+                result += data.choices[0].delta.content;
+                assistantMessage.content = result;
+                this.$forceUpdate();
+                this.scrollToBottom();
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        assistantMessage.content = '对不起，我无法处理您的请求。';
+        this.currentSession.push({ role: 'assistant', content: '对不起，我无法处理您的请求。' });
+      }
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const chatBody = this.$refs.chatBody;
+        chatBody.scrollTop = chatBody.scrollHeight;
+      });
+    },
+    saveChatHistory() {
+      const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+      history.unshift({
+        messages: this.currentSession,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('chatHistory', JSON.stringify(history.slice(0, 10)));
+    },
+    restoreChat(messages) {
+      this.currentSession = messages;
+      this.messages = messages.map((msg, index) => ({
+        id: Date.now() + index,
+        role: msg.role,
+        content: msg.content
+      }));
+      this.showChat = true;
+      this.$nextTick(() => {
+        this.scrollToBottom();
+      });
+    }
+  }
+}
+</script>
+
+<style scoped>
+.chat-dialog {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.chat-button {
+  width: 60px;
+  height: 60px;
+}
+
+.chat-window {
+  display: flex;
+  flex-direction: column;
+}
+
+.el-dialog__body {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-header {
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 15px;
+  align-items: flex-start;
+}
+
+.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 0 10px;
+}
+
+.avatar.user {
+  background-color: #409EFF;
+}
+
+.avatar.assistant {
+  background-color: #67C23A;
+}
+
+.content {
+  padding: 10px 15px;
+  border-radius: 10px;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.user .content {
+  background-color: #409EFF;
+  color: white;
+}
+
+.assistant .content {
+  background-color: #F2F6FC;
+  color: #333;
+}
+
+.input-container {
+  padding: 10px;
+  background-color: #fff;
+  border-top: 1px solid #e4e7ed;
+}
+
+@media (max-width: 600px) {
+  .chat-window {
+    width: 95% !important;
+  }
+  
+  .chat-button {
+    width: 50px;
+    height: 50px;
+  }
+}
+</style>
