@@ -47,7 +47,10 @@
     <el-card v-if="translatedText" class="result-card">
       <div slot="header" class="result-header">
         <span>翻译结果</span>
-        <el-button icon="el-icon-headset" @click="speakText(translatedText)"></el-button>
+        <div>
+          <el-button icon="el-icon-document-copy" @click="copyText(translatedText)"></el-button>
+          <el-button icon="el-icon-headset" @click="speakText(translatedText)"></el-button>
+        </div>
       </div>
       <p>{{ translatedText }}</p>
     </el-card>
@@ -55,7 +58,10 @@
     <el-card v-if="alternatives.length > 0" class="result-card">
       <div slot="header" class="result-header">
         <span>替代翻译</span>
-        <el-button icon="el-icon-headset" @click="speakText(alternatives.join('. '))"></el-button>
+        <div>
+          <el-button icon="el-icon-document-copy" @click="copyText(alternatives.join('\n'))"></el-button>
+          <el-button icon="el-icon-headset" @click="speakText(alternatives.join('. '))"></el-button>
+        </div>
       </div>
       <ul>
         <li v-for="(alt, index) in alternatives" :key="index">{{ alt }}</li>
@@ -88,6 +94,13 @@ export default {
     }
   },
   methods: {
+copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.$message.success('复制成功');
+    }, () => {
+      this.$message.error('复制失败，请手动复制');
+    });
+  },
     getModelsFromEnv() {
       const modelsEnv = process.env.VUE_APP_MODELS || '';
       return modelsEnv.split(',').map(model => model.trim());
