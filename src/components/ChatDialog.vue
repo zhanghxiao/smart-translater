@@ -70,7 +70,10 @@ export default {
     },
     openChat() {
       this.currentSession = [
-        { role: 'system', content: 'You are a helpful assistant. The following messages are translation results. Please analyze and discuss them.' }
+        { 
+          role: 'system', 
+          content: `You are a helpful assistant. The following message is a translation result. Please analyze and discuss it: "${this.initialMessage}"`
+        }
       ];
       if (this.initialMessage) {
         this.messages = [{ id: Date.now(), role: 'assistant', content: this.initialMessage }];
@@ -100,7 +103,6 @@ export default {
       const userMessage = { id: Date.now(), role: 'user', content: this.userInput };
       this.messages.push(userMessage);
       this.currentSession.push({ role: 'user', content: this.userInput });
-      // const userMessageContent = this.userInput;
       this.userInput = '';
     
       const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: '' };
@@ -128,8 +130,7 @@ export default {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let result = '';
-    
-        // eslint-disable-next-line no-constant-condition
+     // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -148,12 +149,16 @@ export default {
               return;
             }
             if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6));
-              if (data.choices[0].delta && data.choices[0].delta.content) {
-                result += data.choices[0].delta.content;
-                assistantMessage.content = result;
-                this.$forceUpdate();
-                this.scrollToBottom();
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+                  result += data.choices[0].delta.content;
+                  assistantMessage.content = result;
+                  this.$forceUpdate();
+                  this.scrollToBottom();
+                }
+              } catch (error) {
+                console.error('Error parsing stream data:', error);
               }
             }
           }
