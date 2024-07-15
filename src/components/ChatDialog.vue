@@ -59,7 +59,7 @@ export default {
       userInput: '',
       messages: [],
       models: this.getModelsFromEnv(),
-      selectedModel: 'gpt-3.5-turbo-0125',
+      selectedModel: 'gpt-3.5-turbo',
       currentSession: []
     };
   },
