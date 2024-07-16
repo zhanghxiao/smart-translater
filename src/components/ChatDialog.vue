@@ -302,5 +302,11 @@ export default {
   background-color: #fff;
   border-top: 1px solid #e4e7ed;
 }
+@media (max-width: 600px) {
+    .chat-button {
+    width: 60px;
+    height: 60px;
+  }
+}
 </style>
     
