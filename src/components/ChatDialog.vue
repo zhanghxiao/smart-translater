@@ -304,8 +304,8 @@ export default {
 }
 @media (max-width: 600px) {
     .chat-button {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
   }
 }
 </style>
