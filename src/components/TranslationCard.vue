@@ -90,7 +90,7 @@ export default {
       alternatives: [],
       translationSource: 'deepl',
       models: this.getModelsFromEnv(),
-      selectedModel: 'gpt-3.5-turbo'
+      selectedModel: 'gpt-4o-mini'
     }
   },
   methods: {
