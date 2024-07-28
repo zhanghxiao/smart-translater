@@ -231,7 +231,7 @@ export default {
         }
 
         const url = new URL(`${ttsApiUrl}/tts`);
-        url.searchParams.append("t", encodeURIComponent(text));
+        url.searchParams.append("t", text);
         url.searchParams.append("v", "zh-CN-XiaoxiaoMultilingualNeural");
         url.searchParams.append("r", "12");
         url.searchParams.append("p", "0");
