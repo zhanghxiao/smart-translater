@@ -176,7 +176,7 @@ copyText(text) {
     },
     async speakText(text) {
       try {
-        const ttsResponse = await fetch('https://mistpe-edge.hf.space/v1/audio/speech', {
+        const ttsResponse = await fetch(`${process.env.VUE_APP_TTS_API_URL}/v1/audio/speech`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
