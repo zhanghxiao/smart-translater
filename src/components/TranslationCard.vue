@@ -226,6 +226,10 @@ export default {
     async speakText(text) {
       try {
         const ttsApiUrl = this.getEnvVar('VUE_APP_TTS_API_URL');
+        if (!ttsApiUrl) {
+          throw new Error('TTS API URL is not set');
+        }
+
         const url = new URL(`${ttsApiUrl}/tts`);
         url.searchParams.append("t", encodeURIComponent(text));
         url.searchParams.append("v", "zh-CN-XiaoxiaoMultilingualNeural");
@@ -245,6 +249,9 @@ export default {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+        };
       } catch (error) {
         console.error('TTS error:', error);
         this.$message.error('语音播放失败，请稍后重试');
