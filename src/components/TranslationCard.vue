@@ -19,6 +19,7 @@
         </el-option>
       </el-select>
     </div>
+
     <el-input
       type="textarea"
       :rows="4"
@@ -26,6 +27,7 @@
       v-model="sourceText"
     >
     </el-input>
+
     <div class="translation-options">
       <el-radio-group v-model="translationSource">
         <el-radio label="deepl">DeepL</el-radio>
@@ -41,6 +43,7 @@
       </el-select>
       <el-button type="primary" @click="translate">翻译</el-button>
     </div>
+
     <el-card v-if="translatedText" class="result-card">
       <div slot="header" class="result-header">
         <span>翻译结果</span>
@@ -51,6 +54,7 @@
       </div>
       <p>{{ translatedText }}</p>
     </el-card>
+
     <el-card v-if="alternatives.length > 0" class="result-card">
       <div slot="header" class="result-header">
         <span>替代翻译</span>
@@ -65,32 +69,31 @@
     </el-card>
 
 <el-collapse>
-  <el-collapse-item title="环境变量设置">
-    <el-form :model="envVars" label-width="120px">
-      <el-form-item label="API 基础 URL">
-        <el-input v-model="envVars.apiBaseUrl" placeholder="留空使用默认值"></el-input>
-      </el-form-item>
-      <el-form-item label="API 密钥">
-        <el-input v-model="envVars.apiKey" type="password" placeholder="留空使用默认值"></el-input>
-      </el-form-item>
-      <el-form-item label="翻译 API URL">
-        <el-input v-model="envVars.translateApiUrl" placeholder="留空使用默认值"></el-input>
-      </el-form-item>
-      <el-form-item label="TTS API URL">
-        <el-input v-model="envVars.ttsApiUrl" placeholder="留空使用默认值"></el-input>
-      </el-form-item>
-      <el-form-item label="可用模型">
-        <el-input v-model="envVars.models" placeholder="用逗号分隔多个模型，留空使用默认值"></el-input>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" @click="updateEnvVars">更新环境变量</el-button>
-      </el-form-item>
-    </el-form>
-  </el-collapse-item>
-</el-collapse>
+    <el-collapse-item title="环境变量设置">
+      <el-form :model="envVars" label-width="120px">
+        <el-form-item label="API 基础 URL">
+          <el-input v-model="envVars.apiBaseUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
+        </el-form-item>
+        <el-form-item label="API 密钥">
+          <el-input v-model="envVars.apiKey" type="password" placeholder="输入自定义值或留空使用默认值"></el-input>
+        </el-form-item>
+        <el-form-item label="翻译 API URL">
+          <el-input v-model="envVars.translateApiUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
+        </el-form-item>
+        <el-form-item label="TTS API URL">
+          <el-input v-model="envVars.ttsApiUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
+        </el-form-item>
+        <el-form-item label="可用模型">
+          <el-input v-model="envVars.models" placeholder="用逗号分隔多个模型，输入自定义值或留空使用默认值"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="updateEnvVars">更新环境变量</el-button>
+        </el-form-item>
+      </el-form>
+    </el-collapse-item>
+  </el-collapse>
   </el-card>
 </template>
-
 <script>
 export default {
   name: 'TranslationCard',
@@ -122,17 +125,18 @@ export default {
     }
   },
   created() {
-    this.envVars = {
-      apiBaseUrl: localStorage.getItem('VUE_APP_API_BASE_URL') || '',
-      apiKey: localStorage.getItem('VUE_APP_API_KEY') || '',
-      translateApiUrl: localStorage.getItem('VUE_APP_TRANSLATE_API_URL') || '',
-      ttsApiUrl: localStorage.getItem('VUE_APP_TTS_API_URL') || '',
-      models: localStorage.getItem('VUE_APP_MODELS') || '',
-    };
+    this.loadEnvVars();
     this.models = this.getModelsFromEnv();
     this.selectedModel = this.models[0] || '';
   },
   methods: {
+    loadEnvVars() {
+      const keys = ['apiBaseUrl', 'apiKey', 'translateApiUrl', 'ttsApiUrl', 'models'];
+      keys.forEach(key => {
+        const envKey = `VUE_APP_${key.toUpperCase()}`;
+        this.envVars[key] = localStorage.getItem(envKey) || '';
+      });
+    },
     copyText(text) {
       navigator.clipboard.writeText(text).then(() => {
         this.$message.success('复制成功');
@@ -141,17 +145,11 @@ export default {
       });
     },
     getEnvVar(key) {
-      return localStorage.getItem(key) || process.env[key] || '';
-    },
-    setEnvVar(key, value) {
-      if (value) {
-        localStorage.setItem(key, value);
-      } else {
-        localStorage.removeItem(key);
-      }
+      const envKey = `VUE_APP_${key.toUpperCase()}`;
+      return localStorage.getItem(envKey) || process.env[envKey] || '';
     },
     getModelsFromEnv() {
-      const modelsEnv = this.getEnvVar('VUE_APP_MODELS');
+      const modelsEnv = this.getEnvVar('MODELS');
       return modelsEnv.split(',').map(model => model.trim()).filter(Boolean);
     },
     swapLanguages() {
@@ -168,7 +166,7 @@ export default {
     },
     async translateWithDeepL() {
       try {
-        const translateApiUrl = this.getEnvVar('VUE_APP_TRANSLATE_API_URL');
+        const translateApiUrl = this.getEnvVar('TRANSLATE_API_URL');
         const response = await fetch(translateApiUrl, {
           method: 'POST',
           headers: {
@@ -180,9 +178,11 @@ export default {
             target_lang: this.targetLang
           })
         });
+
         if (!response.ok) {
           throw new Error('Translation failed');
         }
+
         const data = await response.json();
         this.translatedText = data.data;
         this.alternatives = data.alternatives || [];
@@ -193,8 +193,8 @@ export default {
     },
     async translateWithLLM() {
       try {
-        const apiBaseUrl = this.envVars.apiBaseUrl || process.env.VUE_APP_API_BASE_URL;
-        const apiKey = this.envVars.apiKey || process.env.VUE_APP_API_KEY;
+        const apiBaseUrl = this.getEnvVar('API_BASE_URL');
+        const apiKey = this.getEnvVar('API_KEY');
         const response = await fetch(`${apiBaseUrl}/v1/chat/completions`, {
           method: 'POST',
           headers: {
@@ -240,6 +240,7 @@ export default {
         if (!ttsResponse.ok) {
           throw new Error('TTS failed');
         }
+
         const audioBlob = await ttsResponse.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
@@ -280,7 +281,7 @@ export default {
           localStorage.removeItem(envKey);
         }
       });
-    
+
       // 更新模型列表
       this.models = this.getModelsFromEnv();
       
@@ -288,7 +289,7 @@ export default {
       if (!this.models.includes(this.selectedModel)) {
         this.selectedModel = this.models[0] || '';
       }
-    
+
       this.$message.success('环境变量已更新');
     },
   }
@@ -298,41 +299,50 @@ export default {
 .translation-card {
   margin-bottom: 20px;
 }
+
 .language-selector {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
 }
+
 .translation-options {
   margin-top: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .result-card {
   margin-top: 20px;
 }
+
 .result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .el-collapse {
   margin-top: 20px;
 }
+
 .el-form-item {
   margin-bottom: 15px;
 }
+
 @media (max-width: 600px) {
   .language-selector {
     display: flex;
     justify-content: space-between;
     margin-bottom: 20px;
   }
+
   .language-selector .el-button {
     padding: 8px;
     font-size: 14px;
   }
+
   .translation-options {
     margin-top: 15px;
     display: flex;
@@ -343,6 +353,7 @@ export default {
   .translation-options .el-radio-group {
     margin-bottom: 15px;
   }
+
   .translation-options .el-radio {
     margin-right: 15px;
   }
@@ -350,6 +361,7 @@ export default {
   .translation-options .el-select {
     margin-bottom: 15px;
   }
+
   .translation-options .el-button {
     width: 100%;
   }
