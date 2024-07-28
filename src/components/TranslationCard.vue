@@ -67,6 +67,31 @@
         <li v-for="(alt, index) in alternatives" :key="index">{{ alt }}</li>
       </ul>
     </el-card>
+
+<el-collapse>
+  <el-collapse-item title="环境变量设置">
+    <el-form :model="envVars" label-width="120px">
+      <el-form-item label="API 基础 URL">
+        <el-input v-model="envVars.apiBaseUrl" placeholder="留空使用默认值"></el-input>
+      </el-form-item>
+      <el-form-item label="API 密钥">
+        <el-input v-model="envVars.apiKey" type="password" placeholder="留空使用默认值"></el-input>
+      </el-form-item>
+      <el-form-item label="翻译 API URL">
+        <el-input v-model="envVars.translateApiUrl" placeholder="留空使用默认值"></el-input>
+      </el-form-item>
+      <el-form-item label="TTS API URL">
+        <el-input v-model="envVars.ttsApiUrl" placeholder="留空使用默认值"></el-input>
+      </el-form-item>
+      <el-form-item label="可用模型">
+        <el-input v-model="envVars.models" placeholder="用逗号分隔多个模型，留空使用默认值"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="updateEnvVars">更新环境变量</el-button>
+      </el-form-item>
+    </el-form>
+  </el-collapse-item>
+</el-collapse>
   </el-card>
 </template>
 
@@ -89,38 +114,66 @@ export default {
       translatedText: '',
       alternatives: [],
       translationSource: 'deepl',
-      models: this.getModelsFromEnv(),
-      selectedModel: 'gpt-4o-mini'
+      models: [],
+      selectedModel: '',
+      envVars: {
+        apiBaseUrl: '',
+        apiKey: '',
+        translateApiUrl: '',
+        ttsApiUrl: '',
+        models: '',
+      }
     }
   },
-  methods: {
-copyText(text) {
-    navigator.clipboard.writeText(text).then(() => {
-      this.$message.success('复制成功');
-    }, () => {
-      this.$message.error('复制失败，请手动复制');
-    });
+  created() {
+    this.envVars = {
+      apiBaseUrl: localStorage.getItem('VUE_APP_API_BASE_URL') || '',
+      apiKey: localStorage.getItem('VUE_APP_API_KEY') || '',
+      translateApiUrl: localStorage.getItem('VUE_APP_TRANSLATE_API_URL') || '',
+      ttsApiUrl: localStorage.getItem('VUE_APP_TTS_API_URL') || '',
+      models: localStorage.getItem('VUE_APP_MODELS') || '',
+    };
+    this.models = this.getModelsFromEnv();
+    this.selectedModel = this.models[0] || '';
   },
+  methods: {
+    copyText(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.$message.success('复制成功');
+      }, () => {
+        this.$message.error('复制失败，请手动复制');
+      });
+    },
+    getEnvVar(key) {
+      return localStorage.getItem(key) || process.env[key] || '';
+    },
+    setEnvVar(key, value) {
+      if (value) {
+        localStorage.setItem(key, value);
+      } else {
+        localStorage.removeItem(key);
+      }
+    },
     getModelsFromEnv() {
-      const modelsEnv = process.env.VUE_APP_MODELS || '';
-      return modelsEnv.split(',').map(model => model.trim());
+      const modelsEnv = this.getEnvVar('VUE_APP_MODELS');
+      return modelsEnv.split(',').map(model => model.trim()).filter(Boolean);
     },
     swapLanguages() {
       [this.sourceLang, this.targetLang] = [this.targetLang, this.sourceLang];
     },
     async translate() {
-          if (this.translationSource === 'deepl') {
-            await this.translateWithDeepL();
-          } else {
-            await this.translateWithLLM();
-          }
-          this.$emit('translation-done', this.translatedText);
-          this.saveToHistory();
-        },
-
+      if (this.translationSource === 'deepl') {
+        await this.translateWithDeepL();
+      } else {
+        await this.translateWithLLM();
+      }
+      this.$emit('translation-done', this.translatedText);
+      this.saveToHistory();
+    },
     async translateWithDeepL() {
       try {
-        const response = await fetch(process.env.VUE_APP_TRANSLATE_API_URL, {
+        const translateApiUrl = this.getEnvVar('VUE_APP_TRANSLATE_API_URL');
+        const response = await fetch(translateApiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -146,11 +199,13 @@ copyText(text) {
     },
     async translateWithLLM() {
       try {
-        const response = await fetch(`${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`, {
+        const apiBaseUrl = this.envVars.apiBaseUrl || process.env.VUE_APP_API_BASE_URL;
+        const apiKey = this.envVars.apiKey || process.env.VUE_APP_API_KEY;
+        const response = await fetch(`${apiBaseUrl}/v1/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
+            'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
             messages: [
@@ -176,7 +231,8 @@ copyText(text) {
     },
     async speakText(text) {
       try {
-        const ttsResponse = await fetch(`${process.env.VUE_APP_TTS_API_URL}/v1/audio/speech`, {
+        const ttsApiUrl = this.getEnvVar('VUE_APP_TTS_API_URL');
+        const ttsResponse = await fetch(`${ttsApiUrl}/v1/audio/speech`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -207,37 +263,56 @@ copyText(text) {
         'ZH': 'zh-TW-HsiaoChenNeural',
         'JA': 'en-US-AvaMultilingualNeural',
         'KO': 'en-US-AvaMultilingualNeural',
-                'FR': 'fr-FR-VivienneMultilingualNeural',
-                'DE': 'de-DE-SeraphinaMultilingualNeural'
-              };
-              return langModelMap[this.targetLang] || 'en-US-JennyNeural';
-            },
-            saveToHistory() {
-              const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
-              history.unshift({
-                sourceText: this.sourceText,
-                translatedText: this.translatedText,
-                sourceLang: this.sourceLang,
-                targetLang: this.targetLang,
-                timestamp: new Date().toISOString()
-              });
-              localStorage.setItem('translationHistory', JSON.stringify(history.slice(0, 10)));
-            },
-            getLanguageName(code) {
-              const langs = {
-                'EN': '英语',
-                'ZH': '中文',
-                'JA': '日语',
-                'KO': '韩语',
-                'FR': '法语',
-                'DE': '德语'
-              };
-              return langs[code] || code;
-            }
-          }
+        'FR': 'fr-FR-VivienneMultilingualNeural',
+        'DE': 'de-DE-SeraphinaMultilingualNeural'
+      };
+      return langModelMap[this.targetLang] || 'en-US-JennyNeural';
+    },
+    saveToHistory() {
+      const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
+      history.unshift({
+        sourceText: this.sourceText,
+        translatedText: this.translatedText,
+        sourceLang: this.sourceLang,
+        targetLang: this.targetLang,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('translationHistory', JSON.stringify(history.slice(0, 10)));
+    },
+    getLanguageName(code) {
+      const langs = {
+        'EN': '英语',
+        'ZH': '中文',
+        'JA': '日语',
+        'KO': '韩语',
+        'FR': '法语',
+        'DE': '德语'
+      };
+      return langs[code] || code;
+    },
+    updateEnvVars() {
+      Object.keys(this.envVars).forEach(key => {
+        const envKey = `VUE_APP_${key.toUpperCase()}`;
+        if (this.envVars[key]) {
+          localStorage.setItem(envKey, this.envVars[key]);
+        } else {
+          localStorage.removeItem(envKey);
         }
-        </script>
-        
+      });
+    
+      // 更新模型列表
+      this.models = this.getModelsFromEnv();
+      
+      // 如果当前选中的模型不在新的模型列表中，重置选中的模型
+      if (!this.models.includes(this.selectedModel)) {
+        this.selectedModel = this.models[0] || '';
+      }
+    
+      this.$message.success('环境变量已更新');
+    },
+  }
+}
+</script>
 <style scoped>
 .translation-card {
   margin-bottom: 20px;
@@ -264,6 +339,14 @@ copyText(text) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.el-collapse {
+  margin-top: 20px;
+}
+
+.el-form-item {
+  margin-bottom: 15px;
 }
 
 @media (max-width: 600px) {
