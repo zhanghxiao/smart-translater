@@ -225,7 +225,7 @@ export default {
     },
     async speakText(text) {
       try {
-        const ttsApiUrl = this.getEnvVar('VUE_APP_TTS_API_URL');
+        const ttsApiUrl = this.getEnvVar('TTS_API_URL');
         if (!ttsApiUrl) {
           throw new Error('TTS API URL is not set');
         }
