@@ -226,17 +226,17 @@ export default {
     async speakText(text) {
       try {
         const ttsApiUrl = this.getEnvVar('VUE_APP_TTS_API_URL');
-        const ttsResponse = await fetch(`${ttsApiUrl}/v1/audio/speech`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: this.getTTSModel(),
-            input: text,
-            voice: 'pitch:0.1|rate:0.2'
-          })
+        const url = new URL(`${ttsApiUrl}/tts`);
+        url.searchParams.append("t", encodeURIComponent(text));
+        url.searchParams.append("v", "zh-CN-XiaoxiaoMultilingualNeural");
+        url.searchParams.append("r", "12");
+        url.searchParams.append("p", "0");
+        url.searchParams.append("o", "audio-24khz-48kbitrate-mono-mp3");
+
+        const ttsResponse = await fetch(url.toString(), {
+          method: 'GET'
         });
+
         if (!ttsResponse.ok) {
           throw new Error('TTS failed');
         }
@@ -248,17 +248,6 @@ export default {
         console.error('TTS error:', error);
         this.$message.error('语音播放失败，请稍后重试');
       }
-    },
-    getTTSModel() {
-      const langModelMap = {
-        'EN': 'en-US-JennyNeural',
-        'ZH': 'zh-TW-HsiaoChenNeural',
-        'JA': 'en-US-AvaMultilingualNeural',
-        'KO': 'en-US-AvaMultilingualNeural',
-        'FR': 'fr-FR-VivienneMultilingualNeural',
-        'DE': 'de-DE-SeraphinaMultilingualNeural'
-      };
-      return langModelMap[this.targetLang] || 'en-US-JennyNeural';
     },
     saveToHistory() {
       const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
