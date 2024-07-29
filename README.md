@@ -22,7 +22,8 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 
 
 ### 修复了前端请求泄露secrets的问题，需要额外使用一个worker来代理请求。
-- 首先建立worker，然后在cloudflare page里面选择变量，binding 这个worker（服务绑定），然后重新部署page即可。
+- 首先建立worker，然后在cloudflare page里面选择变量，binding 这个worker（服务绑定），绑定的变量名称为`API_WORKER`，然后重新部署page即可。
+- ![image.png](https://img.imgdd.com/f210f3.60f3b865-788f-4fcb-ad6a-3b987e027330.png)
 ```JavaScript
 export default {
   async fetch(request, env) {
