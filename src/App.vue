@@ -1,6 +1,6 @@
 <template>
   <div id="app" :class="{ 'dark-mode': isDarkMode }">
-    <HomeView />
+    <HomeView :theme-changed="themeChanged" />
     <el-button 
       class="theme-toggle" 
       :icon="isDarkMode ? 'el-icon-sunny' : 'el-icon-moon'" 
@@ -20,8 +20,9 @@ export default {
   },
   data() {
     return {
-      isDarkMode: false
-    }
+        isDarkMode: false,
+        themeChanged: 0
+    }  
   },
   created() {
     const savedTheme = localStorage.getItem('theme');
@@ -37,6 +38,7 @@ export default {
       this.isDarkMode = !this.isDarkMode;
       this.applyTheme();
       localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+      this.themeChanged++; // 增加这行
     },
     applyTheme() {
       document.body.classList.toggle('dark-mode', this.isDarkMode);

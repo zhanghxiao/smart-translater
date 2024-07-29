@@ -6,7 +6,7 @@
       </div>
       <span class="title-text">智能翻译助手</span>
     </h1>
-    <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" />
+    <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" :theme-changed="themeChanged" />
     <div class="settings-container">
       <el-dropdown @command="handleCommand">
         <el-button type="primary">
@@ -63,6 +63,9 @@ export default {
     onSettingsUpdated() {
       this.settingsKey += 1;
     }
+  },
+  props: {
+    themeChanged: Number
   }
 }
 </script>

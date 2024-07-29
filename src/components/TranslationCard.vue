@@ -98,7 +98,13 @@ export default {
     this.loadSettings();
 	this.isDarkMode = document.body.classList.contains('dark-mode');
   },
+  mounted() {
+    this.updateTheme();
+  },
   methods: {
+    updateTheme() {
+      this.isDarkMode = document.body.classList.contains('dark-mode');
+    },
     loadSettings() {
       this.models = (localStorage.getItem('VUE_APP_MODELS') || process.env.VUE_APP_MODELS || '').split(',').map(model => model.trim());
       this.selectedModel = this.models[0] || 'gpt-4o-mini';
@@ -240,6 +246,14 @@ export default {
         'DE': '德语'
       };
       return langs[code] || code;
+    }
+  },
+  props: {
+    themeChanged: Number
+  },
+  watch: {
+    themeChanged() {
+      this.updateTheme();
     }
   }
 }
