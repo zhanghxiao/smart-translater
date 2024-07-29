@@ -1,19 +1,21 @@
 <template>
   <div class="home">
     <h1 class="title">
-      <img src="@/assets/deep.png" alt="Logo" class="logo">
-      智能翻译助手
+      <div class="logo-container" :class="{ 'dark-mode': isDarkMode }">
+        <img src="@/assets/deep.png" alt="Logo" class="logo">
+      </div>
+      <span class="title-text">智能翻译助手</span>
     </h1>
     <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" />
     <div class="settings-container">
-      <el-button 
-        @click="showSettings" 
-        class="settings-button" 
-        type="primary" 
-        icon="el-icon-setting"
-      >
-        自定义环境变量
-      </el-button>
+      <el-dropdown @command="handleCommand">
+        <el-button type="primary">
+          设置<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item command="showSettings">环境变量设置</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
     </div>
     <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
     <HistoryDrawer @restore-chat="onRestoreChat" />
@@ -38,8 +40,12 @@ export default {
   data() {
     return {
       translatedText: '',
-      settingsKey: 0
+      settingsKey: 0,
+      isDarkMode: false
     }
+  },
+  created() {
+    this.isDarkMode = document.body.classList.contains('dark-mode');
   },
   methods: {
     onTranslationDone(text) {
@@ -49,8 +55,10 @@ export default {
     onRestoreChat(messages) {
       this.$refs.chatDialog.restoreChat(messages);
     },
-    showSettings() {
-      this.$refs.settingsDialog.showDialog();
+    handleCommand(command) {
+      if (command === 'showSettings') {
+        this.$refs.settingsDialog.showDialog();
+      }
     },
     onSettingsUpdated() {
       this.settingsKey += 1;
@@ -60,15 +68,6 @@ export default {
 </script>
 
 <style scoped>
-.settings-container {
-  margin: 20px 0;
-  text-align: left;
-}
-
-.settings-button {
-  margin-bottom: 10px;
-}
-
 .home {
   max-width: 800px;
   margin: 0 auto;
@@ -82,10 +81,39 @@ export default {
   margin-bottom: 20px;
 }
 
+.logo-container {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-right: 10px;
+}
+
+.logo-container.dark-mode {
+  background-color: #fff;
+}
+
 .logo {
   width: 40px;
   height: 40px;
-  margin-right: 10px;
+}
+
+.title-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409EFF;
+}
+
+.dark-mode .title-text {
+  color: #60a0ff;
+}
+
+.settings-container {
+  margin: 20px 0;
+  text-align: left;
 }
 
 @media (max-width: 600px) {
@@ -93,8 +121,13 @@ export default {
     padding: 10px;
   }
   
-  .title {
-    font-size: 1.5em;
+  .title-text {
+    font-size: 20px;
+  }
+  
+  .logo-container {
+    width: 40px;
+    height: 40px;
   }
   
   .logo {

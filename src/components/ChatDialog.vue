@@ -39,6 +39,7 @@
   </div>
 </template>
 
+
 <script>
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 
@@ -110,109 +111,108 @@ export default {
       this.currentSession = [];
     },
     async sendMessage() {
-      if (!this.userInput.trim()) return;
-    
-      const userMessage = { id: Date.now(), role: 'user', content: this.userInput };
-      this.messages.push(userMessage);
-      this.currentSession.push({ role: 'user', content: this.userInput });
-      this.userInput = '';
-    
-      const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: '' };
-      this.messages.push(assistantMessage);
-    
-      try {
-        const response = await fetch('/api/translateWithLLM', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: this.currentSession.slice(-12), // 保留最新的6次对话记录（12条消息）
-            stream: true,
-            model: this.selectedModel,
-            temperature: 0.5,
-            presence_penalty: 2
-          })
-        });
-    
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let result = '';
-     // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim());
-          for (const line of lines) {
-            if (line === 'data: [DONE]') {
-              this.currentSession.push({ role: 'assistant', content: result });
-              // 保留最新的6次对话记录
-              if (this.currentSession.length > 13) { // 13 = 1 (system) + 12 (6 user + 6 assistant)
-                this.currentSession = [
-                  this.currentSession[0],
-                  ...this.currentSession.slice(-12)
-                ];
-              }
-              return;
-            }
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-                  result += data.choices[0].delta.content;
-                  assistantMessage.content = result;
-                  this.$forceUpdate();
-                  this.scrollToBottom();
+          if (!this.userInput.trim()) return;
+        
+          const userMessage = { id: Date.now(), role: 'user', content: this.userInput };
+          this.messages.push(userMessage);
+          this.currentSession.push({ role: 'user', content: this.userInput });
+          this.userInput = '';
+        
+          const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: '' };
+          this.messages.push(assistantMessage);
+        
+          try {
+            const response = await fetch('/api/translateWithLLM', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messages: this.currentSession.slice(-12), // 保留最新的6次对话记录（12条消息）
+                stream: true,
+                model: this.selectedModel,
+                temperature: 0.5,
+                presence_penalty: 2
+              })
+            });
+        
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let result = '';
+         // eslint-disable-next-line no-constant-condition
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n').filter(line => line.trim());
+              for (const line of lines) {
+                if (line === 'data: [DONE]') {
+                  this.currentSession.push({ role: 'assistant', content: result });
+                  // 保留最新的6次对话记录
+                  if (this.currentSession.length > 13) { // 13 = 1 (system) + 12 (6 user + 6 assistant)
+                    this.currentSession = [
+                      this.currentSession[0],
+                      ...this.currentSession.slice(-12)
+                    ];
+                  }
+                  return;
                 }
-              } catch (error) {
-                console.error('Error parsing stream data:', error);
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
+                      result += data.choices[0].delta.content;
+                      assistantMessage.content = result;
+                      this.$forceUpdate();
+                      this.scrollToBottom();
+                    }
+                  } catch (error) {
+                    console.error('Error parsing stream data:', error);
+                  }
+                }
               }
             }
+          } catch (error) {
+            console.error('Error:', error);
+            assistantMessage.content = '对不起，我无法处理您的请求。';
+            this.currentSession.push({ role: 'assistant', content: '对不起，我无法处理您的请求。' });
           }
+        },
+        scrollToBottom() {
+          this.$nextTick(() => {
+            const chatBody = this.$refs.chatBody;
+            chatBody.scrollTo({
+              top: chatBody.scrollHeight,
+              behavior: 'smooth'
+            });
+          });
+        },
+        saveChatHistory() {
+          const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+          history.unshift({
+            messages: this.currentSession,
+            timestamp: new Date().toISOString()
+          });
+          localStorage.setItem('chatHistory', JSON.stringify(history.slice(0, 10)));
+        },
+        restoreChat(messages) {
+          this.currentSession = messages;
+          this.messages = messages.filter(msg => msg.role !== 'system').map((msg, index) => ({
+            id: Date.now() + index,
+            role: msg.role,
+            content: msg.content
+          }));
+          this.showChat = true;
+          this.$nextTick(() => {
+            this.scrollToBottom();
+          });
+        },
+        updateInitialMessage(message) {
+          this.localInitialMessage = message;
         }
-      } catch (error) {
-        console.error('Error:', error);
-        assistantMessage.content = '对不起，我无法处理您的请求。';
-        this.currentSession.push({ role: 'assistant', content: '对不起，我无法处理您的请求。' });
       }
-    },
-    scrollToBottom() {
-      this.$nextTick(() => {
-        const chatBody = this.$refs.chatBody;
-        chatBody.scrollTo({
-          top: chatBody.scrollHeight,
-          behavior: 'smooth'
-        });
-      });
-    },
-    saveChatHistory() {
-      const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-      history.unshift({
-        messages: this.currentSession,
-        timestamp: new Date().toISOString()
-      });
-      localStorage.setItem('chatHistory', JSON.stringify(history.slice(0, 10)));
-    },
-    restoreChat(messages) {
-      this.currentSession = messages;
-      this.messages = messages.filter(msg => msg.role !== 'system').map((msg, index) => ({
-        id: Date.now() + index,
-        role: msg.role,
-        content: msg.content
-      }));
-      this.showChat = true;
-      this.$nextTick(() => {
-        this.scrollToBottom();
-      });
-    },
-    updateInitialMessage(message) {
-      this.localInitialMessage = message;
     }
-  }
-}
 </script>
-
 <style scoped>
 .chat-dialog {
   position: fixed;
@@ -282,18 +282,18 @@ export default {
 }
 
 .content {
-  padding: 4px 12px; /* 减小上下内边距 */
+  padding: 4px 12px;
   border-radius: 8px;
   max-width: 70%;
   word-wrap: break-word;
 }
 
 .content :first-child {
-  margin-top: 2px; /* 减小第一个子元素的上边距 */
+  margin-top: 2px;
 }
 
 .content :last-child {
-  margin-bottom: 2px; /* 减小最后一个子元素的下边距 */
+  margin-bottom: 2px;
 }
 
 .user .content {
@@ -312,5 +312,31 @@ export default {
   padding: 10px;
   background-color: #fff;
   border-top: 1px solid #e4e7ed;
+}
+
+.dark-mode .chat-header {
+  background-color: #2c2c2c;
+  border-bottom-color: #4a4a4a;
+}
+
+.dark-mode .chat-body {
+  background-color: #1a1a1a;
+}
+
+.dark-mode .input-container {
+  background-color: #2c2c2c;
+  border-top-color: #4a4a4a;
+}
+
+.dark-mode .el-input__inner {
+  background-color: #333;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.dark-mode .el-button {
+  background-color: #444;
+  border-color: #555;
+  color: #e0e0e0;
 }
 </style>

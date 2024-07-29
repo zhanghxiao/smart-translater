@@ -1,5 +1,5 @@
 <template>
-  <el-card class="translation-card">
+  <el-card class="translation-card" :class="{ 'dark-mode': isDarkMode }">
     <div class="language-selector">
       <el-select v-model="sourceLang" placeholder="源语言">
         <el-option
@@ -90,11 +90,13 @@ export default {
       alternatives: [],
       translationSource: 'deepl',
       models: [],
-      selectedModel: ''
+      selectedModel: '',
+      isDarkMode: false,
     }
   },
   created() {
     this.loadSettings();
+	this.isDarkMode = document.body.classList.contains('dark-mode');
   },
   methods: {
     loadSettings() {
@@ -123,83 +125,99 @@ export default {
       this.$emit('translation-done', this.translatedText);
       this.saveToHistory();
     },
-  async translateWithDeepL() {
-    try {
-      const response = await fetch('/api/translateWithDeepL', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: this.sourceText,
-          source_lang: this.sourceLang,
-          target_lang: this.targetLang
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Translation failed');
+    async translateWithDeepL() {
+      try {
+        const response = await fetch('/api/translateWithDeepL', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: this.sourceText,
+            source_lang: this.sourceLang,
+            target_lang: this.targetLang
+          })
+        });
+    
+        if (!response.ok) {
+          throw new Error('Translation failed');
+        }
+    
+        const data = await response.json();
+        this.translatedText = data.data;
+        this.alternatives = data.alternatives || [];
+      } catch (error) {
+        console.error('Translation error:', error);
+        this.$message.error('翻译失败，请稍后重试');
       }
-
-      const data = await response.json();
-      this.translatedText = data.data;
-      this.alternatives = data.alternatives || [];
-    } catch (error) {
-      console.error('Translation error:', error);
-      this.$message.error('翻译失败，请稍后重试');
-    }
-  },
-  async translateWithLLM() {
-    try {
-      const response = await fetch('/api/translateWithLLM', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: 'You are a professional, authentic machine translation engine.' },
-            { role: 'user', content: `Translate the following source text to ${this.getLanguageName(this.targetLang)}, Output translation directly without any additional text.\nSource Text: ${this.sourceText}\nTranslated Text:` }
-          ],
-          model: this.selectedModel,
-          temperature: 0.7
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Translation failed');
+    },
+    async translateWithLLM() {
+      try {
+        const response = await fetch('/api/translateWithLLM', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: 'system', content: 'You are a professional, authentic machine translation engine.' },
+              { role: 'user', content: `Translate the following source text to ${this.getLanguageName(this.targetLang)}, Output translation directly without any additional text.\nSource Text: ${this.sourceText}\nTranslated Text:` }
+            ],
+            model: this.selectedModel,
+            temperature: 0.7
+          })
+        });
+    
+        if (!response.ok) {
+          throw new Error('Translation failed');
+        }
+    
+        const data = await response.json();
+        this.translatedText = data.choices[0].message.content;
+        this.alternatives = [];
+      } catch (error) {
+        console.error('Translation error:', error);
+        this.$message.error('翻译失败，请稍后重试');
       }
+    },
+    async speakText(text) {
+      try {
+        const ttsResponse = await fetch(`${this.getEnvVar('VUE_APP_TTS_API_URL')}/v1/audio/speech`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: this.getTTSModel(),
+            input: text,
+            voice: 'pitch:0.1|rate:0.2'
+          })
+        });
 
-      const data = await response.json();
-      this.translatedText = data.choices[0].message.content;
-      this.alternatives = [];
-    } catch (error) {
-      console.error('Translation error:', error);
-      this.$message.error('翻译失败，请稍后重试');
-    }
-  },
-  async speakText(text) {
-    try {
-      const response = await fetch(`/api/speakText?t=${encodeURIComponent(text)}&v=zh-CN-XiaoxiaoMultilingualNeural&r=12&p=0&o=audio-24khz-48kbitrate-mono-mp3`, {
-        method: 'GET'
-      });
+        if (!ttsResponse.ok) {
+          throw new Error('TTS failed');
+        }
 
-      if (!response.ok) {
-        throw new Error('TTS failed');
+        const audioBlob = await ttsResponse.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      } catch (error) {
+        console.error('TTS error:', error);
+        this.$message.error('语音播放失败，请稍后重试');
       }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
+    },
+    getTTSModel() {
+      const langModelMap = {
+        'EN': 'en-US-JennyNeural',
+        'ZH': 'zh-TW-HsiaoChenNeural',
+        'JA': 'en-US-AvaMultilingualNeural',
+        'KO': 'en-US-AvaMultilingualNeural',
+        'FR': 'fr-FR-VivienneMultilingualNeural',
+        'DE': 'de-DE-SeraphinaMultilingualNeural'
       };
-    } catch (error) {
-      console.error('TTS error:', error);
-      this.$message.error('语音播放失败，请稍后重试');
-    }
-  },
+      return langModelMap[this.targetLang] || 'en-US-JennyNeural';
+    },
     saveToHistory() {
       const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
       history.unshift({
@@ -226,6 +244,28 @@ export default {
 }
 </script>
 <style scoped>
+
+.dark-mode .el-radio__label {
+  color: #fff;
+}
+
+.dark-mode .el-radio__input.is-checked .el-radio__inner {
+  border-color: #409EFF;
+  background: #409EFF;
+}
+
+.dark-mode .el-radio__input.is-checked+.el-radio__label {
+  color: #409EFF;
+}
+
+.dark-mode .el-radio__inner {
+  background-color: #000;
+  border-color: #5a5a5a;
+}
+
+.dark-mode .el-radio__inner:hover {
+  border-color: #409EFF;
+}
 .translation-card {
   margin-bottom: 20px;
 }
