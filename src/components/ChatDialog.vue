@@ -58,26 +58,38 @@ export default {
       showChat: false,
       userInput: '',
       messages: [],
-      models: this.getModelsFromEnv(),
-      selectedModel: 'gpt-4o-mini',
-      currentSession: []
+      models: [],
+      selectedModel: '',
+      currentSession: [],
+      localInitialMessage: this.initialMessage
     };
   },
+  created() {
+    this.loadSettings();
+  },
+  watch: {
+    initialMessage(newValue) {
+      this.localInitialMessage = newValue;
+    }
+  },
   methods: {
-    getModelsFromEnv() {
-      const modelsEnv = process.env.VUE_APP_MODELS || '';
-      return modelsEnv.split(',').map(model => model.trim());
+    loadSettings() {
+      this.models = (localStorage.getItem('VUE_APP_MODELS') || process.env.VUE_APP_MODELS || '').split(',').map(model => model.trim());
+      this.selectedModel = this.models[0] || 'gpt-4o-mini';
+    },
+    getEnvVar(key) {
+      return localStorage.getItem(key) || process.env[key];
     },
     openChat() {
       this.currentSession = [
         { 
           role: 'system', 
-          content: `You are a helpful assistant. The following message is a translation result. Please analyze and discuss it: "${this.initialMessage}"`
+          content: `You are a helpful assistant. The following message is a translation result. Please analyze and discuss it: "${this.localInitialMessage}"`
         }
       ];
-      if (this.initialMessage) {
-        this.messages = [{ id: Date.now(), role: 'assistant', content: this.initialMessage }];
-        this.currentSession.push({ role: 'assistant', content: this.initialMessage });
+      if (this.localInitialMessage) {
+        this.messages = [{ id: Date.now(), role: 'assistant', content: this.localInitialMessage }];
+        this.currentSession.push({ role: 'assistant', content: this.localInitialMessage });
       } else {
         this.messages = [];
       }
@@ -109,23 +121,19 @@ export default {
       this.messages.push(assistantMessage);
     
       try {
-        const response = await fetch(
-          `${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
-            },
-            body: JSON.stringify({
-              messages: this.currentSession.slice(-12), // 保留最新的6次对话记录（12条消息）
-              stream: true,
-              model: this.selectedModel,
-              temperature: 0.5,
-              presence_penalty: 2
-            })
-          }
-        );
+        const response = await fetch('/api/translateWithLLM', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: this.currentSession.slice(-12), // 保留最新的6次对话记录（12条消息）
+            stream: true,
+            model: this.selectedModel,
+            temperature: 0.5,
+            presence_penalty: 2
+          })
+        });
     
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
@@ -197,6 +205,9 @@ export default {
       this.$nextTick(() => {
         this.scrollToBottom();
       });
+    },
+    updateInitialMessage(message) {
+      this.localInitialMessage = message;
     }
   }
 }
@@ -302,11 +313,4 @@ export default {
   background-color: #fff;
   border-top: 1px solid #e4e7ed;
 }
-@media (max-width: 600px) {
-    .chat-button {
-    width: 50px;
-    height: 50px;
-  }
-}
 </style>
-    

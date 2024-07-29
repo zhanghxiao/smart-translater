@@ -67,33 +67,9 @@
         <li v-for="(alt, index) in alternatives" :key="index">{{ alt }}</li>
       </ul>
     </el-card>
-
-<el-collapse>
-    <el-collapse-item title="环境变量设置">
-      <el-form :model="envVars" label-width="120px">
-        <el-form-item label="API 基础 URL">
-          <el-input v-model="envVars.apiBaseUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
-        </el-form-item>
-        <el-form-item label="API 密钥">
-          <el-input v-model="envVars.apiKey" type="password" placeholder="输入自定义值或留空使用默认值"></el-input>
-        </el-form-item>
-        <el-form-item label="翻译 API URL">
-          <el-input v-model="envVars.translateApiUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
-        </el-form-item>
-        <el-form-item label="TTS API URL">
-          <el-input v-model="envVars.ttsApiUrl" placeholder="输入自定义值或留空使用默认值"></el-input>
-        </el-form-item>
-        <el-form-item label="可用模型">
-          <el-input v-model="envVars.models" placeholder="用逗号分隔多个模型，输入自定义值或留空使用默认值"></el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="updateEnvVars">更新环境变量</el-button>
-        </el-form-item>
-      </el-form>
-    </el-collapse-item>
-  </el-collapse>
   </el-card>
 </template>
+
 <script>
 export default {
   name: 'TranslationCard',
@@ -114,28 +90,19 @@ export default {
       alternatives: [],
       translationSource: 'deepl',
       models: [],
-      selectedModel: '',
-      envVars: {
-        apiBaseUrl: '',
-        apiKey: '',
-        translateApiUrl: '',
-        ttsApiUrl: '',
-        models: '',
-      }
+      selectedModel: ''
     }
   },
   created() {
-    this.loadEnvVars();
-    this.models = this.getModelsFromEnv();
-    this.selectedModel = this.models[0] || '';
+    this.loadSettings();
   },
   methods: {
-    loadEnvVars() {
-      const keys = ['apiBaseUrl', 'apiKey', 'translateApiUrl', 'ttsApiUrl', 'models'];
-      keys.forEach(key => {
-        const envKey = `VUE_APP_${key.toUpperCase()}`;
-        this.envVars[key] = localStorage.getItem(envKey) || '';
-      });
+    loadSettings() {
+      this.models = (localStorage.getItem('VUE_APP_MODELS') || process.env.VUE_APP_MODELS || '').split(',').map(model => model.trim());
+      this.selectedModel = this.models[0] || 'gpt-4o-mini';
+    },
+    getEnvVar(key) {
+      return localStorage.getItem(key) || process.env[key];
     },
     copyText(text) {
       navigator.clipboard.writeText(text).then(() => {
@@ -143,14 +110,6 @@ export default {
       }, () => {
         this.$message.error('复制失败，请手动复制');
       });
-    },
-    getEnvVar(key) {
-      const envKey = `VUE_APP_${key.toUpperCase()}`;
-      return localStorage.getItem(envKey) || process.env[envKey] || '';
-    },
-    getModelsFromEnv() {
-      const modelsEnv = this.getEnvVar('MODELS');
-      return modelsEnv.split(',').map(model => model.trim()).filter(Boolean);
     },
     swapLanguages() {
       [this.sourceLang, this.targetLang] = [this.targetLang, this.sourceLang];
@@ -164,99 +123,83 @@ export default {
       this.$emit('translation-done', this.translatedText);
       this.saveToHistory();
     },
-    async translateWithDeepL() {
-      try {
-        const translateApiUrl = this.getEnvVar('TRANSLATE_API_URL');
-        const response = await fetch(translateApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            text: this.sourceText,
-            source_lang: this.sourceLang,
-            target_lang: this.targetLang
-          })
-        });
+  async translateWithDeepL() {
+    try {
+      const response = await fetch('/api/translateWithDeepL', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: this.sourceText,
+          source_lang: this.sourceLang,
+          target_lang: this.targetLang
+        })
+      });
 
-        if (!response.ok) {
-          throw new Error('Translation failed');
-        }
-
-        const data = await response.json();
-        this.translatedText = data.data;
-        this.alternatives = data.alternatives || [];
-      } catch (error) {
-        console.error('Translation error:', error);
-        this.$message.error('翻译失败，请稍后重试');
+      if (!response.ok) {
+        throw new Error('Translation failed');
       }
-    },
-    async translateWithLLM() {
-      try {
-        const apiBaseUrl = this.getEnvVar('API_BASE_URL');
-        const apiKey = this.getEnvVar('API_KEY');
-        const response = await fetch(`${apiBaseUrl}/v1/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            messages: [
-              { role: 'system', content: 'You are a professional, authentic machine translation engine.' },
-              { role: 'user', content: `Translate the following source text to ${this.getLanguageName(this.targetLang)}, Output translation directly without any additional text.\nSource Text: ${this.sourceText}\nTranslated Text:` }
-            ],
-            model: this.selectedModel,
-            temperature: 0.7
-          })
-        });
-    
-        if (!response.ok) {
-          throw new Error('Translation failed');
-        }
-    
-        const data = await response.json();
-        this.translatedText = data.choices[0].message.content;
-        this.alternatives = []; // LLM 暂不提供替代翻译
-      } catch (error) {
-        console.error('Translation error:', error);
-        this.$message.error('翻译失败，请稍后重试');
+
+      const data = await response.json();
+      this.translatedText = data.data;
+      this.alternatives = data.alternatives || [];
+    } catch (error) {
+      console.error('Translation error:', error);
+      this.$message.error('翻译失败，请稍后重试');
+    }
+  },
+  async translateWithLLM() {
+    try {
+      const response = await fetch('/api/translateWithLLM', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a professional, authentic machine translation engine.' },
+            { role: 'user', content: `Translate the following source text to ${this.getLanguageName(this.targetLang)}, Output translation directly without any additional text.\nSource Text: ${this.sourceText}\nTranslated Text:` }
+          ],
+          model: this.selectedModel,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Translation failed');
       }
-    },
-    async speakText(text) {
-      try {
-        const ttsApiUrl = this.getEnvVar('TTS_API_URL');
-        if (!ttsApiUrl) {
-          throw new Error('TTS API URL is not set');
-        }
 
-        const url = new URL(`${ttsApiUrl}/tts`);
-        url.searchParams.append("t", text);
-        url.searchParams.append("v", "zh-CN-XiaoxiaoMultilingualNeural");
-        url.searchParams.append("r", "12");
-        url.searchParams.append("p", "0");
-        url.searchParams.append("o", "audio-24khz-48kbitrate-mono-mp3");
+      const data = await response.json();
+      this.translatedText = data.choices[0].message.content;
+      this.alternatives = [];
+    } catch (error) {
+      console.error('Translation error:', error);
+      this.$message.error('翻译失败，请稍后重试');
+    }
+  },
+  async speakText(text) {
+    try {
+      const response = await fetch(`/api/speakText?t=${encodeURIComponent(text)}&v=zh-CN-XiaoxiaoMultilingualNeural&r=12&p=0&o=audio-24khz-48kbitrate-mono-mp3`, {
+        method: 'GET'
+      });
 
-        const ttsResponse = await fetch(url.toString(), {
-          method: 'GET'
-        });
-
-        if (!ttsResponse.ok) {
-          throw new Error('TTS failed');
-        }
-
-        const audioBlob = await ttsResponse.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.play();
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-        };
-      } catch (error) {
-        console.error('TTS error:', error);
-        this.$message.error('语音播放失败，请稍后重试');
+      if (!response.ok) {
+        throw new Error('TTS failed');
       }
-    },
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+    } catch (error) {
+      console.error('TTS error:', error);
+      this.$message.error('语音播放失败，请稍后重试');
+    }
+  },
     saveToHistory() {
       const history = JSON.parse(localStorage.getItem('translationHistory') || '[]');
       history.unshift({
@@ -278,27 +221,7 @@ export default {
         'DE': '德语'
       };
       return langs[code] || code;
-    },
-    updateEnvVars() {
-      Object.keys(this.envVars).forEach(key => {
-        const envKey = `VUE_APP_${key.toUpperCase()}`;
-        if (this.envVars[key]) {
-          localStorage.setItem(envKey, this.envVars[key]);
-        } else {
-          localStorage.removeItem(envKey);
-        }
-      });
-
-      // 更新模型列表
-      this.models = this.getModelsFromEnv();
-      
-      // 如果当前选中的模型不在新的模型列表中，重置选中的模型
-      if (!this.models.includes(this.selectedModel)) {
-        this.selectedModel = this.models[0] || '';
-      }
-
-      this.$message.success('环境变量已更新');
-    },
+    }
   }
 }
 </script>
@@ -328,14 +251,6 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.el-collapse {
-  margin-top: 20px;
-}
-
-.el-form-item {
-  margin-bottom: 15px;
 }
 
 @media (max-width: 600px) {
