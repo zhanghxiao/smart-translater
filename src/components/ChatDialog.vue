@@ -38,6 +38,8 @@
     </el-dialog>
   </div>
 </template>
+
+
 <script>
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 
@@ -215,7 +217,6 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 .chat-dialog {
   position: fixed;
@@ -285,18 +286,18 @@ export default {
 }
 
 .content {
-  padding: 4px 12px; /* 减小上下内边距 */
+  padding: 4px 12px;
   border-radius: 8px;
   max-width: 70%;
   word-wrap: break-word;
 }
 
 .content :first-child {
-  margin-top: 2px; /* 减小第一个子元素的上边距 */
+  margin-top: 2px;
 }
 
 .content :last-child {
-  margin-bottom: 2px; /* 减小最后一个子元素的下边距 */
+  margin-bottom: 2px;
 }
 
 .user .content {
@@ -316,5 +317,30 @@ export default {
   background-color: #fff;
   border-top: 1px solid #e4e7ed;
 }
+
+.dark-mode .chat-header {
+  background-color: #2c2c2c;
+  border-bottom-color: #4a4a4a;
+}
+
+.dark-mode .chat-body {
+  background-color: #1a1a1a;
+}
+
+.dark-mode .input-container {
+  background-color: #2c2c2c;
+  border-top-color: #4a4a4a;
+}
+
+.dark-mode .el-input__inner {
+  background-color: #333;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.dark-mode .el-button {
+  background-color: #444;
+  border-color: #555;
+  color: #e0e0e0;
+}
 </style>
-    
