@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
+    "prebuild": "node generateRedirects.js",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
