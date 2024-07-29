@@ -10,13 +10,11 @@ export async function onRequest(context) {
 		return new Response(null, { headers });
 	}
 	// 根据请求路径修改请求目的地
-	if (request.method === "POST") {
-		if (url.pathname.startsWith("/api")) {
-			return env.API_WORKER.fetch(new Request(url.toString().replace('/api', ''), request));
-		} else {
-			return new Response('Not Found', { status: 404 });
-		}
+	if (url.pathname.startsWith("/api")) {
+		const newUrl = new URL(url);
+		newUrl.pathname = url.pathname.replace('/api', '');
+		return env.API_WORKER.fetch(new Request(newUrl.toString(), request));
 	} else {
-		return new Response('Method not allowed', { status: 405, headers });
+		return new Response('Not Found', { status: 404 });
 	}
 }
