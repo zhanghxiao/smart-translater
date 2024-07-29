@@ -1,32 +1,29 @@
 <template>
   <div id="app">
     <HomeView />
+    <SettingsDialog :visible.sync="showSettings" @settings-updated="updateSettings" />
   </div>
 </template>
 
 <script>
 import HomeView from './views/HomeView.vue'
+import SettingsDialog from './components/SettingsDialog.vue'
 
 export default {
   name: 'App',
   components: {
-    HomeView
+    HomeView,
+    SettingsDialog
+  },
+  data() {
+    return {
+      showSettings: false
+    }
+  },
+  methods: {
+    updateSettings(newSettings) {
+      this.$root.$data.env = newSettings;
+    }
   }
 }
 </script>
-
-<style>
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-
-@media (max-width: 600px) {
-  #app {
-    margin-top: 20px;
-  }
-}
-</style>

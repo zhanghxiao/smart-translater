@@ -4,43 +4,73 @@
       <img src="@/assets/deep.png" alt="Logo" class="logo">
       智能翻译助手
     </h1>
-    <TranslationCard @translation-done="onTranslationDone" />
-    <ChatDialog :initial-message="translatedText" ref="chatDialog" />
+    <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" />
+    <div class="settings-container">
+      <el-button 
+        @click="showSettings" 
+        class="settings-button" 
+        type="primary" 
+        icon="el-icon-setting"
+      >
+        自定义环境变量
+      </el-button>
+    </div>
+    <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
     <HistoryDrawer @restore-chat="onRestoreChat" />
+    <SettingsDialog ref="settingsDialog" @settings-updated="onSettingsUpdated" />
   </div>
 </template>
+
 
 <script>
 import TranslationCard from '@/components/TranslationCard.vue'
 import ChatDialog from '@/components/ChatDialog.vue'
 import HistoryDrawer from '@/components/HistoryDrawer.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 
 export default {
   name: 'HomeView',
   components: {
     TranslationCard,
     ChatDialog,
-    HistoryDrawer
+    HistoryDrawer,
+    SettingsDialog
   },
   data() {
     return {
-      translatedText: ''
+      translatedText: '',
+      settingsKey: 0
     }
   },
   methods: {
     onTranslationDone(text) {
       this.translatedText = text;
-      // 不自动打开对话框，但更新初始消息
       this.$refs.chatDialog.updateInitialMessage(text);
     },
     onRestoreChat(messages) {
       this.$refs.chatDialog.restoreChat(messages);
+    },
+    showSettings() {
+      this.$refs.settingsDialog.showDialog();
+    },
+    onSettingsUpdated() {
+      this.settingsKey += 1;
     }
   }
 }
 </script>
 
 <style scoped>
+.settings-container {
+  margin: 20px 0;
+  text-align: left;
+}
+
+.settings-button {
+  margin-bottom: 10px;
+}
+
+
 .home {
   max-width: 800px;
   margin: 0 auto;
