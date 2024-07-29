@@ -162,7 +162,7 @@ export default {
     },
   async translateWithDeepL() {
     try {
-      const response = await fetch('/api?action=translateWithDeepL', {
+      const response = await fetch('/api/translateWithDeepL', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -188,7 +188,7 @@ export default {
   },
   async translateWithLLM() {
     try {
-      const response = await fetch('/api?action=translateWithLLM', {
+      const response = await fetch('/api/translateWithLLM', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -217,7 +217,7 @@ export default {
   },
   async speakText(text) {
     try {
-      const response = await fetch(`/api?action=speakText&t=${encodeURIComponent(text)}&v=zh-CN-XiaoxiaoMultilingualNeural&r=12&p=0&o=audio-24khz-48kbitrate-mono-mp3`, {
+      const response = await fetch(`/api/speakText?t=${encodeURIComponent(text)}&v=zh-CN-XiaoxiaoMultilingualNeural&r=12&p=0&o=audio-24khz-48kbitrate-mono-mp3`, {
         method: 'GET'
       });
 
