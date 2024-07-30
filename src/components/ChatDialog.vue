@@ -122,23 +122,19 @@ export default {
       this.messages.push(assistantMessage);
     
       try {
-        const response = await fetch(
-          `${this.getEnvVar('VUE_APP_API_BASE_URL')}/v1/chat/completions`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${this.getEnvVar('VUE_APP_API_KEY')}`
-            },
-            body: JSON.stringify({
-              messages: this.currentSession.slice(-12),
-              stream: true,
-              model: this.selectedModel,
-              temperature: 0.5,
-              presence_penalty: 2
-            })
-          }
-        );
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: this.currentSession.slice(-12),
+            stream: true,
+            model: this.selectedModel,
+            temperature: 0.5,
+            presence_penalty: 2
+          })
+        });
     
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
