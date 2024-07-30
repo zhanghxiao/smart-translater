@@ -7,7 +7,6 @@
       <span class="title-text">智能翻译助手</span>
     </h1>
     <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" :theme-changed="themeChanged" />
-   
     <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
     <HistoryDrawer @restore-chat="onRestoreChat" />
   </div>
