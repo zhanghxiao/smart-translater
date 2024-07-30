@@ -9,10 +9,13 @@ Vue.config.productionTip = false;
 // 获取环境变量
 fetch('/')
   .then(response => {
-    const envVars = JSON.parse(response.headers.get('X-Environment-Variables'));
-    Object.keys(envVars).forEach(key => {
-      process.env[key] = envVars[key];
-    });
+    const encodedEnvVars = response.headers.get('X-Environment-Variables');
+    if (encodedEnvVars) {
+      const envVars = JSON.parse(atob(encodedEnvVars));
+      Object.keys(envVars).forEach(key => {
+        process.env[key] = envVars[key];
+      });
+    }
     
     new Vue({
       render: h => h(App),

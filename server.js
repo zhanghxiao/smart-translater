@@ -9,14 +9,18 @@ app.use(express.json());
 
 // 添加环境变量中间件
 app.use((req, res, next) => {
-  res.header('Access-Control-Expose-Headers', 'X-Environment-Variables');
-  res.header('X-Environment-Variables', JSON.stringify({
+  const envVars = {
     VUE_APP_API_BASE_URL: process.env.VUE_APP_API_BASE_URL,
     VUE_APP_API_KEY: process.env.VUE_APP_API_KEY,
     VUE_APP_MODELS: process.env.VUE_APP_MODELS,
     VUE_APP_TRANSLATE_API_URL: process.env.VUE_APP_TRANSLATE_API_URL,
     VUE_APP_TTS_API_URL: process.env.VUE_APP_TTS_API_URL
-  }));
+  };
+  
+  const encodedEnvVars = Buffer.from(JSON.stringify(envVars)).toString('base64');
+  
+  res.header('Access-Control-Expose-Headers', 'X-Environment-Variables');
+  res.header('X-Environment-Variables', encodedEnvVars);
   next();
 });
 
