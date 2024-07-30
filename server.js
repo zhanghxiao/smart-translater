@@ -1,98 +1,78 @@
-require('dotenv').config();
 const express = require('express');
-const path = require('path');
 const axios = require('axios');
-
+const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
+// 中间件
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
 
-// DeepL 翻译 API
+// 添加环境变量中间件
+app.use((req, res, next) => {
+  res.header('Access-Control-Expose-Headers', 'X-Environment-Variables');
+  res.header('X-Environment-Variables', JSON.stringify({
+    VUE_APP_API_BASE_URL: process.env.VUE_APP_API_BASE_URL,
+    VUE_APP_API_KEY: process.env.VUE_APP_API_KEY,
+    VUE_APP_MODELS: process.env.VUE_APP_MODELS,
+    VUE_APP_TRANSLATE_API_URL: process.env.VUE_APP_TRANSLATE_API_URL,
+    VUE_APP_TTS_API_URL: process.env.VUE_APP_TTS_API_URL
+  }));
+  next();
+});
+
+// API 路由
 app.post('/api/translate/deepl', async (req, res) => {
   try {
-    const { text, source_lang, target_lang } = req.body;
-    const response = await axios.post(process.env.VUE_APP_TRANSLATE_API_URL, {
-      text,
-      source_lang,
-      target_lang
-    });
+    const response = await axios.post(process.env.VUE_APP_TRANSLATE_API_URL, req.body);
     res.json(response.data);
   } catch (error) {
-    console.error('DeepL translation error:', error);
     res.status(500).json({ error: 'Translation failed' });
   }
 });
 
-// LLM 翻译 API
 app.post('/api/translate/llm', async (req, res) => {
   try {
-    const { messages, model, temperature } = req.body;
-    const response = await axios.post(`${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`, {
-      messages,
-      model,
-      temperature
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
-      }
+    const response = await axios.post(`${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`, req.body, {
+      headers: { 'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}` }
     });
     res.json(response.data);
   } catch (error) {
-    console.error('LLM translation error:', error);
-    res.status(500).json({ error: 'Translation failed' });
+    res.status(500).json({ error: 'LLM translation failed' });
   }
 });
 
-// TTS API
-app.post('/api/tts', async (req, res) => {
-  try {
-    const { model, input, voice } = req.body;
-    const response = await axios.post(process.env.VUE_APP_TTS_API_URL, {
-      model,
-      input,
-      voice
-    }, {
-      responseType: 'arraybuffer'
-    });
-    res.set('Content-Type', 'audio/mpeg');
-    res.send(response.data);
-  } catch (error) {
-    console.error('TTS error:', error);
-    res.status(500).json({ error: 'TTS failed' });
-  }
-});
-
-// Chat API
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, stream, model, temperature, presence_penalty } = req.body;
-    const response = await axios.post(`${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`, {
-      messages,
-      stream,
-      model,
-      temperature,
-      presence_penalty
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}`
-      },
+    const response = await axios.post(`${process.env.VUE_APP_API_BASE_URL}/v1/chat/completions`, req.body, {
+      headers: { 'Authorization': `Bearer ${process.env.VUE_APP_API_KEY}` },
       responseType: 'stream'
     });
-
     response.data.pipe(res);
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ error: 'Chat failed' });
+    res.status(500).json({ error: 'Chat request failed' });
   }
 });
 
-// 处理所有其他路由，返回 index.html
+app.post('/api/tts', async (req, res) => {
+  try {
+    const response = await axios.post(process.env.VUE_APP_TTS_API_URL, req.body, {
+      responseType: 'arraybuffer'
+    });
+    res.type('audio/mpeg');
+    res.send(response.data);
+  } catch (error) {
+    res.status(500).json({ error: 'TTS request failed' });
+  }
+});
+
+// 静态文件服务
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// 所有其他请求返回 index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
