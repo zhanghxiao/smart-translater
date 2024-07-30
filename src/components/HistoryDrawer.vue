@@ -128,10 +128,10 @@ export default {
   margin-top: 10px;
 }
 
-@media (max-width: 600px) {
+/* @media (max-width: 600px) {
   .history-button {
     width: 50px;
     height: 50px;
   }
-}
+} */
 </style>

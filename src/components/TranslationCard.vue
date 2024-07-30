@@ -133,7 +133,7 @@ export default {
     },
     async translateWithDeepL() {
       try {
-        const response = await fetch('/api/translate/deepl', {
+        const response = await fetch(this.getEnvVar('VUE_APP_TRANSLATE_API_URL'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -157,13 +157,13 @@ export default {
         this.$message.error('翻译失败，请稍后重试');
       }
     },
-
     async translateWithLLM() {
       try {
-        const response = await fetch('/api/translate/llm', {
+        const response = await fetch(`${this.getEnvVar('VUE_APP_API_BASE_URL')}/v1/chat/completions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.getEnvVar('VUE_APP_API_KEY')}`
           },
           body: JSON.stringify({
             messages: [
@@ -174,11 +174,11 @@ export default {
             temperature: 0.7
           })
         });
-
+    
         if (!response.ok) {
           throw new Error('Translation failed');
         }
-
+    
         const data = await response.json();
         this.translatedText = data.choices[0].message.content;
         this.alternatives = [];
@@ -187,10 +187,9 @@ export default {
         this.$message.error('翻译失败，请稍后重试');
       }
     },
-
     async speakText(text) {
       try {
-        const response = await fetch('/api/tts', {
+        const ttsResponse = await fetch(`${this.getEnvVar('VUE_APP_TTS_API_URL')}/v1/audio/speech`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -202,11 +201,11 @@ export default {
           })
         });
 
-        if (!response.ok) {
+        if (!ttsResponse.ok) {
           throw new Error('TTS failed');
         }
 
-        const audioBlob = await response.blob();
+        const audioBlob = await ttsResponse.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audio.play();
