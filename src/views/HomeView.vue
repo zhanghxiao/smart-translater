@@ -7,19 +7,9 @@
       <span class="title-text">智能翻译助手</span>
     </h1>
     <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" :theme-changed="themeChanged" />
-    <div class="settings-container">
-      <el-dropdown @command="handleCommand">
-        <el-button type="primary">
-          设置<i class="el-icon-arrow-down el-icon--right"></i>
-        </el-button>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item command="showSettings">环境变量设置</el-dropdown-item>
-        </el-dropdown-menu>
-      </el-dropdown>
-    </div>
+   
     <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
     <HistoryDrawer @restore-chat="onRestoreChat" />
-    <SettingsDialog ref="settingsDialog" @settings-updated="onSettingsUpdated" />
   </div>
 </template>
 
@@ -27,7 +17,6 @@
 import TranslationCard from '@/components/TranslationCard.vue'
 import ChatDialog from '@/components/ChatDialog.vue'
 import HistoryDrawer from '@/components/HistoryDrawer.vue'
-import SettingsDialog from '@/components/SettingsDialog.vue'
 
 export default {
   name: 'HomeView',
@@ -35,7 +24,6 @@ export default {
     TranslationCard,
     ChatDialog,
     HistoryDrawer,
-    SettingsDialog
   },
   data() {
     return {
