@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "concurrently \"vue-cli-service build\" \"node -r dotenv/config server.js\"",
+    "build": "vue-cli-service buil",
     "lint": "vue-cli-service lint",
     "start:server": "node -r dotenv/config server.js",
     "dev:server": "nodemon -r dotenv/config server.js",
