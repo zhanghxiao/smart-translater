@@ -4,9 +4,7 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build:front": "vue-cli-service build",
-    "build:back": "node scripts/copy-server.js",
-    "build": "concurrently \"npm run build:front\" \"npm run build:back\"",
+    "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "start:server": "node -r dotenv/config server.js",
     "dev:server": "nodemon -r dotenv/config server.js",
