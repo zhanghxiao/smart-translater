@@ -61,12 +61,15 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${port} is already in use. The server may already be running.`);
-  } else {
-    console.error(err);
-  }
+// 提供前端静态文件
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// 处理所有其他路由，返回 index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
