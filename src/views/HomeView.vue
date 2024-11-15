@@ -7,13 +7,6 @@
       <span class="title-text">智能翻译助手</span>
     </h1>
     <TranslationCard @translation-done="onTranslationDone" :key="settingsKey" :theme-changed="themeChanged" />
-    <div class="settings-container">
-      <el-dropdown @command="handleCommand">
-        <el-button type="primary">
-          设置<i class="el-icon-arrow-down el-icon--right"></i>
-        </el-button>
-      </el-dropdown>
-    </div>
     <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
     <HistoryDrawer @restore-chat="onRestoreChat" />
     <SettingsDialog ref="settingsDialog" @settings-updated="onSettingsUpdated" />
