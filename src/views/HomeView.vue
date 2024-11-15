@@ -12,9 +12,6 @@
         <el-button type="primary">
           设置<i class="el-icon-arrow-down el-icon--right"></i>
         </el-button>
-        <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item command="showSettings">环境变量设置</el-dropdown-item>
-        </el-dropdown-menu>
       </el-dropdown>
     </div>
     <ChatDialog :initial-message="translatedText" ref="chatDialog" :key="settingsKey" />
