@@ -1,75 +1,128 @@
 <template>
-  <el-card class="translation-card" :class="{ 'dark-mode': isDarkMode }">
-    <div class="language-selector">
-      <el-select v-model="sourceLang" placeholder="源语言">
-        <el-option
-          v-for="lang in languages"
-          :key="lang.value"
-          :label="lang.label"
-          :value="lang.value">
-        </el-option>
-      </el-select>
-      <el-button icon="el-icon-refresh" @click="swapLanguages"></el-button>
-      <el-select v-model="targetLang" placeholder="目标语言">
-        <el-option
-          v-for="lang in languages"
-          :key="lang.value"
-          :label="lang.label"
-          :value="lang.value">
-        </el-option>
-      </el-select>
-    </div>
-
-    <el-input
-      type="textarea"
-      :rows="4"
-      placeholder="请输入要翻译的文本"
-      v-model="sourceText"
-    >
-    </el-input>
-
-    <div class="translation-options">
-      <el-radio-group v-model="translationSource">
-        <el-radio label="deepl">DeepL</el-radio>
-        <el-radio label="llm">大语言模型</el-radio>
-      </el-radio-group>
-      <el-select v-if="translationSource === 'llm'" v-model="selectedModel" placeholder="选择模型">
-        <el-option
-          v-for="model in models"
-          :key="model"
-          :label="model"
-          :value="model">
-        </el-option>
-      </el-select>
-      <el-button type="primary" @click="translate">翻译</el-button>
-    </div>
-
-    <el-card v-if="translatedText" class="result-card">
-      <div slot="header" class="result-header">
-        <span>翻译结果</span>
-        <div>
-          <el-button icon="el-icon-document-copy" @click="copyText(translatedText)"></el-button>
-          <el-button icon="el-icon-headset" @click="speakText(translatedText)"></el-button>
-        </div>
+  <div class="translation-container">
+    <el-card class="translation-card" :class="{ 'dark-mode': isDarkMode }">
+      <!-- 语言选择器部分 -->
+      <div class="language-selector">
+        <el-select 
+          v-model="sourceLang" 
+          placeholder="源语言"
+          class="language-select"
+        >
+          <el-option
+            v-for="lang in languages"
+            :key="lang.value"
+            :label="lang.label"
+            :value="lang.value">
+          </el-option>
+        </el-select>
+        
+        <el-button 
+          class="swap-btn"
+          @click="swapLanguages"
+        >
+          <i class="el-icon-refresh"></i>
+        </el-button>
+        
+        <el-select 
+          v-model="targetLang" 
+          placeholder="目标语言"
+          class="language-select"
+        >
+          <el-option
+            v-for="lang in languages"
+            :key="lang.value"
+            :label="lang.label"
+            :value="lang.value">
+          </el-option>
+        </el-select>
       </div>
-      <p>{{ translatedText }}</p>
-    </el-card>
 
-    <el-card v-if="alternatives.length > 0" class="result-card">
-      <div slot="header" class="result-header">
-        <span>替代翻译</span>
-        <div>
-          <el-button icon="el-icon-document-copy" @click="copyText(alternatives.join('\n'))"></el-button>
-          <el-button icon="el-icon-headset" @click="speakText(alternatives.join('. '))"></el-button>
+      <!-- 输入框部分 -->
+      <el-input
+        type="textarea"
+        :rows="4"
+        placeholder="请输入要翻译的文本"
+        v-model="sourceText"
+        class="translation-input"
+      >
+      </el-input>
+
+      <!-- 翻译选项部分 -->
+      <div class="translation-options">
+        <div class="translation-source">
+          <el-radio-group v-model="translationSource" class="radio-group">
+            <el-radio label="deepl">DeepL</el-radio>
+            <el-radio label="llm">大语言模型</el-radio>
+          </el-radio-group>
+          
+          <el-select 
+            v-if="translationSource === 'llm'" 
+            v-model="selectedModel" 
+            placeholder="选择模型"
+            class="model-select"
+          >
+            <el-option
+              v-for="model in models"
+              :key="model"
+              :label="model"
+              :value="model">
+            </el-option>
+          </el-select>
         </div>
+        
+        <el-button 
+          type="primary" 
+          @click="translate"
+          class="translate-btn"
+        >
+          翻译
+        </el-button>
       </div>
-      <ul>
-        <li v-for="(alt, index) in alternatives" :key="index">{{ alt }}</li>
-      </ul>
+
+      <!-- 翻译结果部分 -->
+      <el-card v-if="translatedText" class="result-card">
+        <div slot="header" class="result-header">
+          <span>翻译结果</span>
+          <div class="result-actions">
+            <el-button 
+              icon="el-icon-document-copy" 
+              @click="copyText(translatedText)"
+              class="action-btn"
+            ></el-button>
+            <el-button 
+              icon="el-icon-headset" 
+              @click="speakText(translatedText)"
+              class="action-btn"
+            ></el-button>
+          </div>
+        </div>
+        <p class="result-text">{{ translatedText }}</p>
+      </el-card>
+
+      <!-- 替代翻译部分 -->
+      <el-card v-if="alternatives.length > 0" class="result-card alternatives-card">
+        <div slot="header" class="result-header">
+          <span>替代翻译</span>
+          <div class="result-actions">
+            <el-button 
+              icon="el-icon-document-copy" 
+              @click="copyText(alternatives.join('\n'))"
+              class="action-btn"
+            ></el-button>
+            <el-button 
+              icon="el-icon-headset" 
+              @click="speakText(alternatives.join('. '))"
+              class="action-btn"
+            ></el-button>
+          </div>
+        </div>
+        <ul class="alternatives-list">
+          <li v-for="(alt, index) in alternatives" :key="index">{{ alt }}</li>
+        </ul>
+      </el-card>
     </el-card>
-  </el-card>
+  </div>
 </template>
-
 <script>
 export default {
   name: 'TranslationCard',
@@ -259,87 +312,221 @@ export default {
 }
 </script>
 <style scoped>
-
-.dark-mode .el-radio__label {
-  color: #fff;
+.translation-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
-.dark-mode .el-radio__input.is-checked .el-radio__inner {
-  border-color: #409EFF;
-  background: #409EFF;
-}
-
-.dark-mode .el-radio__input.is-checked+.el-radio__label {
-  color: #409EFF;
-}
-
-.dark-mode .el-radio__inner {
-  background-color: #000;
-  border-color: #5a5a5a;
-}
-
-.dark-mode .el-radio__inner:hover {
-  border-color: #409EFF;
-}
 .translation-card {
-  margin-bottom: 20px;
+  background: var(--el-bg-color);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
 }
 
+.translation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.dark-mode.translation-card {
+  background: #1a1a1a;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* 语言选择器样式 */
 .language-selector {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
+.language-select {
+  flex: 1;
+}
+
+.swap-btn {
+  padding: 12px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: var(--el-color-primary-light-8);
+}
+
+.swap-btn:hover {
+  background: var(--el-color-primary-light-5);
+  transform: rotate(180deg);
+}
+
+/* 输入框样式 */
+.translation-input {
+  margin-bottom: 1.5rem;
+}
+
+.translation-input :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  background: var(--el-bg-color-page);
+}
+
+.translation-input :deep(.el-textarea__inner:focus) {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 3px var(--el-color-primary-light-8);
+}
+
+/* 翻译选项样式 */
 .translation-options {
-  margin-top: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
+.translation-source {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.radio-group :deep(.el-radio) {
+  margin-right: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.radio-group :deep(.el-radio:hover) {
+  background: var(--el-color-primary-light-9);
+}
+
+.model-select {
+  min-width: 180px;
+}
+
+.translate-btn {
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.translate-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* 结果卡片样式 */
 .result-card {
-  margin-top: 20px;
+  margin-top: 1.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem;
+  background: var(--el-bg-color-page);
 }
 
+.result-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: var(--el-color-primary-light-8);
+  transform: translateY(-2px);
+}
+
+.result-text {
+  padding: 1rem;
+  line-height: 1.6;
+}
+
+.alternatives-list {
+  list-style: none;
+  padding: 1rem;
+  margin: 0;
+}
+
+.alternatives-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.alternatives-list li:last-child {
+  border-bottom: none;
+}
+
+/* 暗色模式适配 */
+.dark-mode {
+  --el-bg-color: #1a1a1a;
+  --el-bg-color-page: #242424;
+  --el-text-color-primary: #ffffff;
+  --el-border-color: #333333;
+}
+
+.dark-mode .translation-input :deep(.el-textarea__inner) {
+  background: #242424;
+  color: #ffffff;
+}
+
+.dark-mode .radio-group :deep(.el-radio__label) {
+  color: #ffffff;
+}
+
+.dark-mode .action-btn {
+  color: #ffffff;
+  border-color: #333333;
+}
+
+/* 响应式设计 */
 @media (max-width: 600px) {
-  .language-selector {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
+  .translation-container {
+    padding: 0 0.5rem;
   }
 
-  .language-selector .el-button {
-    padding: 8px;
-    font-size: 14px;
+  .language-selector {
+    flex-direction: column;
+  }
+
+  .language-select {
+    width: 100%;
   }
 
   .translation-options {
-    margin-top: 15px;
-    display: flex;
     flex-direction: column;
     align-items: stretch;
   }
-  
-  .translation-options .el-radio-group {
-    margin-bottom: 15px;
+
+  .translation-source {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .translation-options .el-radio {
-    margin-right: 15px;
-  }
-  
-  .translation-options .el-select {
-    margin-bottom: 15px;
+  .radio-group {
+    display: flex;
+    justify-content: space-between;
   }
 
-  .translation-options .el-button {
+  .model-select {
+    width: 100%;
+  }
+
+  .translate-btn {
     width: 100%;
   }
 }
